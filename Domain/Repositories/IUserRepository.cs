@@ -6,5 +6,5 @@ namespace Domain.Repositories;
 
 public interface IUserRepository: IGenericRepository<UserModel>
 {
-    Task<List<UserModel>> GetAllAsync();i
+    Task<List<UserModel>> GetAllAsync();
 }
