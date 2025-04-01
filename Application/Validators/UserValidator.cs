@@ -14,14 +14,14 @@ public class UserValidator: AbstractValidator<UserDto>
             .NotEmpty().WithMessage("El nombre no puede estar vacio.")
             .Matches(@"^[a-zA-ZÀ-ÿ\s]+$").WithMessage("El nombre contiene caracteres inválidos.")
             .When(n => !string.IsNullOrWhiteSpace(n.Name))
-            .MinimumLength(3).WithMessage("El nombre debe tener al menos 2 caracteres.")
+            .MinimumLength(2).WithMessage("El nombre debe tener al menos 2 caracteres.")
             .MaximumLength(50).WithMessage("El nombre debe tener menos de 50 caracteres.");
         
         RuleFor(l => l.LastName)
             .NotEmpty().WithMessage("El apellido no puede estar vacio. ")
             .Matches(@"^[a-zA-ZÀ-ÿ\s]+$").WithMessage("El apellido contiene caracteres inválidos.")
             .When(l => !string.IsNullOrWhiteSpace(l.LastName))
-            .MinimumLength(3).WithMessage("El apellido debe tener al menos 2 caracteres.")
+            .MinimumLength(2).WithMessage("El apellido debe tener al menos 2 caracteres.")
             .MaximumLength(50).WithMessage("El apellido debe tener menos de 50 caracteres.");
 
 

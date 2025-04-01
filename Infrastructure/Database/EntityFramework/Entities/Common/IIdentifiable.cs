@@ -1,6 +1,6 @@
 namespace Infrastructure.Database.EntityFramework.Entities.Common;
 
-public class IIdentifiable
+public interface IIdentifiable
 {
-    
+    public int Id { get; set; }
 }
