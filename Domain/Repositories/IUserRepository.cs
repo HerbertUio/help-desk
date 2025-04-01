@@ -6,9 +6,11 @@ namespace Domain.Repositories;
 
 public interface IUserRepository: IGenericRepository<UserModel>
 {
-    Task<List<UserDto>> GetAllAsync();
-    Task<List<UserDto>> GetUserByIdAsync(int id);
-    Task<List<UserDto>> GetUserByName(string name);
-    Task<bool> IsUniqueUser(string user);
+    Task<List<UserModel>> GetAllAsync();
+    Task<UserModel?> GetUserByIdAsync(int id);
+    Task<UserModel?> GetUserByNameAsync(string name);
+    Task<UserModel?> GetUserByEmailAsync(string email);
+    Task<bool> IsUniqueUserAsync(string user);
     Task<ResponseLoginUserDto> LoginAsync(LoginUserDto loginUserDto);
+    Task<bool> DeleteUserByIdAsync(int id);
 }
