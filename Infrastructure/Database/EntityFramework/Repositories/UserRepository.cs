@@ -19,29 +19,15 @@ public class UserRepository: GenericRepository<UserEntity>, IUserRepository
 
     public async Task<UserModel> CreateAsync(UserModel model)
     {
-        if (model == null) throw new ArgumentNullException(nameof(model));
-        var entity = model.ToEntity();
-        if (entity.Id == 0)
-        {
-            var createdEntity = await base.CreateAsync(entity);
-            await _context.SaveChangesAsync();
-            return createdEntity.ToModel();
-        }
-        var updatedEntity = await base.UpdateAsync(entity);
-        await _context.SaveChangesAsync();
-        return updatedEntity.ToModel();
+       var entity = model.ToEntity();
+       var createdEntity = await base.CreateAsync(entity);
+       await _context.SaveChangesAsync();
+       return createdEntity.ToModel();
     }
 
     public async Task<UserModel> UpdateAsync(UserModel model)
     {
-        if (model == null) throw new ArgumentNullException(nameof(model));
         var entity = model.ToEntity();
-        if (entity.Id == 0)
-        {
-            var createdEntity = await base.CreateAsync(entity);
-            await _context.SaveChangesAsync();
-            return createdEntity.ToModel();
-        }
         var updatedEntity = await base.UpdateAsync(entity);
         await _context.SaveChangesAsync();
         return updatedEntity.ToModel();
@@ -49,54 +35,26 @@ public class UserRepository: GenericRepository<UserEntity>, IUserRepository
 
     public async Task<List<UserModel>> GetAllAsync()
     {
-        var entities = await _context.Users.ToListAsync();
-        return entities.Select(u => u.ToModel()).ToList();
+        var users = await _context.Users.ToListAsync();
+        return users.Select(user => user.ToModel()).ToList();
     }
 
     public async Task<UserModel?> GetUserByIdAsync(int id)
     {
         var entity = await _context.Users.FindAsync(id);
-        if (entity == null)
-        {
-            throw new EntityNotFoundException(typeof(UserEntity), id);
-        }
-
-        try
-        {
-            var changes = await _context.SaveChangesAsync();
-            if (changes > 0)
-            {
-                return entity.ToModel();
-            }
-            else
-            {
-                throw new DbUpdateConcurrencyException("No se realizaron cambios en la base de datos.");
-            }
-        }
-        catch (DbUpdateException ex) 
-        {
-            throw new DatabaseOperationException($"Error al eliminar usuario con ID {id}: {ex.Message}", ex);
-        }
-    }
-
-    public async Task<UserModel?> GetUserByNameAsync(string name)
-    {
-        var entity = await _context.Users.FirstOrDefaultAsync(u => u.Name == name);
-        if (entity == null) return null;
-        return entity.ToModel();
+        return entity?.ToModel();
     }
 
     public async Task<UserModel?> GetUserByEmailAsync(string email)
     {
         var entity = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
-        if (entity == null) return null;
-        return entity.ToModel();
+        return entity?.ToModel();
     }
 
     public async Task<bool> IsEmailUniqueAsync(string email)
     {
-        var entity = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
-        return entity == null;
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+        return user == null;
     }
 
     public async Task<bool> DeleteUserByIdAsync(int id)
@@ -104,17 +62,10 @@ public class UserRepository: GenericRepository<UserEntity>, IUserRepository
         var entity = await _context.Users.FindAsync(id);
         if (entity == null)
         {
-            throw new EntityNotFoundException(typeof(UserEntity), id);
+            throw new EntityNotFoundException($"User with id {id} not found.");
         }
-        try
-        {
-            _context.Users.Remove(entity);
-            var changes = await _context.SaveChangesAsync();
-            return changes > 0;
-        }
-        catch (DbUpdateException ex)
-        {
-            throw new DatabaseOperationException($"Error al eliminar usuario con ID {id}: {ex.Message}", ex);
-        }
+        _context.Users.Remove(entity);
+        await _context.SaveChangesAsync();
+        return true;
     }
 }
