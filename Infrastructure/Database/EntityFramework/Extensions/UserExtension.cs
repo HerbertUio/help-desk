@@ -50,4 +50,5 @@ public static class UserExtension
             entity.Role,
             entity.Active);
     }
+    
 }
