@@ -34,6 +34,7 @@ public class UserEntity: BaseEntity, IIdentifiable
     
     [Required] 
     [Column("department_id")]
+    [ForeignKey("DepartmentEntity")]
     public int DepartmentId { get; set; }
     
     [Required]

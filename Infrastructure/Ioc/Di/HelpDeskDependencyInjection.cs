@@ -10,36 +10,44 @@ namespace Infrastructure.Ioc.Di;
 
 public static class HelpDeskDependencyInjection
 {
-    public static IServiceCollection RegisterDatabaseServices(this IServiceCollection collection, IConfiguration configuration)
+    public static IServiceCollection AddDependencies(
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
-        string connectionString = configuration["ConnectionStrings:DefaultConnection"];
-        collection.AddDbContext<HelpDeskDbContext>(options =>
-            {
-                options.UseNpgsql(connectionString);
-            }
-        );
-        return collection;
+        services.AddDatabase(configuration);
+        services.AddRepositories();
+        services.AddApplicationServices();
+        return services;
     }
 
-    public static IServiceCollection RegisterProviders(this IServiceCollection collection)
+    private static IServiceCollection AddDatabase(
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
-        return collection;
-    }
-    
-    public static IServiceCollection RegisterValidators (this IServiceCollection collection)
-    {
-        return collection;
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+                               ?? configuration["ConnectionStrings:remoteConnection"]
+                               ?? throw new ArgumentNullException(nameof(configuration), "Connection string no encontrada ('DefaultConnection' o 'remoteConnection').");
+
+        services.AddDbContext<HelpDeskDbContext>(options =>
+            options.UseNpgsql(connectionString));
+        return services;
     }
 
-    public static IServiceCollection RegisterServices(this IServiceCollection collection)
+    private static IServiceCollection AddRepositories(this IServiceCollection services)
     {
-        collection.AddTransient<UserService>();
-        return collection;
+        services.AddScoped<IUserRepository, UserRepository>();
+        // Registrar otros repositorios aquí...
+        return services;
     }
-    
-    public static IServiceCollection RegisterRepositories(this IServiceCollection collection)
+
+    private static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
-        collection.AddTransient<IUserRepository, UserRepository>();
-        return collection;
+        services.AddScoped<UserService>();
+        // Registrar otros servicios de aplicación aquí...
+
+        // Registrar Validadores (Alternativa: hacerlo en Api/Program.cs)
+        // services.AddValidatorsFromAssemblyContaining<RegisterUserValidator>(ServiceLifetime.Scoped);
+
+        return services;
     }
 }
