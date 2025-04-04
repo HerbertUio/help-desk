@@ -53,6 +53,21 @@ public static class UserExtend
             Role = userModel.Role
         };
     }
+    // Mapea UpdateUserDto -> UserModel (para actualización)
+    public static UserModel ToModel (this UpdateUserDto updateUserDto)
+    {
+        return new UserModel(
+            updateUserDto.Id,
+            updateUserDto.Name,
+            updateUserDto.LastName,
+            updateUserDto.PhoneNumber,
+            updateUserDto.Email,
+            "", // Password se hashea y asigna en el servicio
+            updateUserDto.DepartmentId,
+            updateUserDto.Role,
+            true // Usuario activo por defecto al registrar
+        );
+    }
 
     
     // public static UserModel ToModel (this RegisterUserDto registerUserDto)

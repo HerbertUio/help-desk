@@ -6,66 +6,173 @@ using Infrastructure.Database.EntityFramework.Exceptions;
 using Infrastructure.Database.EntityFramework.Extensions;
 using Infrastructure.Database.EntityFramework.Repositories.Common;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Npgsql;
 
 namespace Infrastructure.Database.EntityFramework.Repositories;
 
-public class UserRepository: GenericRepository<UserEntity>, IUserRepository
+public class UserRepository : IUserRepository
 {
     private readonly HelpDeskDbContext _context;
-    public UserRepository(HelpDeskDbContext context) : base(context)
+    private readonly DbSet<UserEntity> _users; 
+    private readonly ILogger<UserRepository> _logger;
+
+    public UserRepository(HelpDeskDbContext context, ILogger<UserRepository> logger = null)
     {
-        _context = context;
+        _context = context ?? throw new ArgumentNullException(nameof(context));
+        _users = _context.Set<UserEntity>(); 
+        _logger = logger;
     }
 
     public async Task<UserModel> CreateAsync(UserModel model)
     {
-       var entity = model.ToEntity();
-       var createdEntity = await base.CreateAsync(entity);
-       await _context.SaveChangesAsync();
-       return createdEntity.ToModel();
+        if (model == null) throw new ArgumentNullException(nameof(model));
+        var entity = model.ToEntity();
+
+        await _users.AddAsync(entity); 
+
+        try
+        {
+            await _context.SaveChangesAsync();
+            _logger?.LogInformation($"Usuario creado con ID: {entity.Id}");
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException pgEx && pgEx.SqlState == "23505")
+        {
+            throw new DuplicateEntityException($"Ya existe un registro con el email '{entity.Email}' u otro valor único.", ex);
+        }
+        catch (DbUpdateException ex)
+        {
+            throw new DatabaseOperationException($"Error al guardar el nuevo usuario: {ex.Message}", ex);
+        }
+        catch (Exception ex)
+        {
+            throw new DatabaseOperationException($"Error inesperado al crear usuario: {ex.Message}", ex);
+        }
+
+        return entity.ToModel();
     }
 
     public async Task<UserModel> UpdateAsync(UserModel model)
     {
-        var entity = model.ToEntity();
-        var updatedEntity = await base.UpdateAsync(entity);
-        await _context.SaveChangesAsync();
-        return updatedEntity.ToModel();
+        if (model == null) throw new ArgumentNullException(nameof(model));
+
+        var entity = await _users.FindAsync(model.Id);
+        if (entity == null)
+        {
+            throw new EntityNotFoundException(typeof(UserEntity).Name, model.Id);
+        }
+        
+        entity.Name = model.Name;
+        entity.LastName = model.LastName;
+        entity.PhoneNumber = model.PhoneNumber;
+        entity.Email = model.Email;
+        if (!string.IsNullOrWhiteSpace(model.Password) && entity.Password != model.Password)
+        {
+            entity.Password = model.Password;
+        }
+        entity.DepartmentId = model.DepartmentId;
+        entity.Role = model.Role;
+        entity.Active = model.Active;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+            _logger?.LogInformation($"Usuario actualizado con ID: {entity.Id}");
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException pgEx && pgEx.SqlState == "23505")
+        {
+            throw new DuplicateEntityException("Conflicto de valor único al actualizar usuario.", ex);
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            throw new DatabaseOperationException($"Conflicto de concurrencia al actualizar usuario con ID {model.Id}.", ex);
+        }
+        catch (DbUpdateException ex)
+        {
+            throw new DatabaseOperationException($"Error al guardar cambios para el usuario con ID {model.Id}.", ex);
+        }
+        catch (Exception ex)
+        {
+            throw new DatabaseOperationException($"Error inesperado al actualizar usuario con ID {model.Id}.", ex);
+        }
+
+        return entity.ToModel();
     }
 
     public async Task<List<UserModel>> GetAllAsync()
     {
-        var users = await _context.Users.ToListAsync();
-        return users.Select(user => user.ToModel()).ToList();
+        try
+        {
+            var entities = await _users.AsNoTracking().ToListAsync();
+            return entities.Select(entity => entity.ToModel()).ToList();
+        }
+        catch (Exception ex)
+        {
+            throw new DatabaseOperationException("Error al consultar todos los usuarios.", ex);
+        }
     }
 
     public async Task<UserModel?> GetUserByIdAsync(int id)
     {
-        var entity = await _context.Users.FindAsync(id);
-        return entity?.ToModel();
+        try
+        {
+            var entity = await _users.FindAsync(id);
+            return entity?.ToModel();
+        }
+        catch (Exception ex)
+        {
+            throw new DatabaseOperationException($"Error al consultar usuario con ID {id}.", ex);
+        }
     }
 
     public async Task<UserModel?> GetUserByEmailAsync(string email)
     {
-        var entity = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
-        return entity?.ToModel();
+        try
+        {
+            var entity = await _users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower());
+            return entity?.ToModel();
+        }
+        catch (Exception ex)
+        {
+            throw new DatabaseOperationException($"Error al consultar usuario con email {email}.", ex);
+        }
     }
 
     public async Task<bool> IsEmailUniqueAsync(string email)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
-        return user == null;
+        try
+        {
+            return !await _users.AnyAsync(u => u.Email.ToLower() == email.ToLower());
+        }
+        catch (Exception ex)
+        {
+            throw new DatabaseOperationException($"Error al verificar unicidad de email {email}.", ex);
+        }
     }
 
     public async Task<bool> DeleteUserByIdAsync(int id)
     {
-        var entity = await _context.Users.FindAsync(id);
+        var entity = await _users.FindAsync(id);
         if (entity == null)
         {
-            throw new EntityNotFoundException($"User with id {id} not found.");
+            return false;
         }
-        _context.Users.Remove(entity);
-        await _context.SaveChangesAsync();
-        return true;
+
+        _users.Remove(entity);
+        try
+        {
+            var changes = await _context.SaveChangesAsync();
+            return changes > 0;
+        }
+        catch (DbUpdateException ex)
+        {
+            throw new DatabaseOperationException($"Error al eliminar usuario con ID {id}.", ex);
+        }
+        catch (Exception ex)
+        {
+            throw new DatabaseOperationException($"Error inesperado al eliminar usuario con ID {id}.", ex);
+        }
     }
 }

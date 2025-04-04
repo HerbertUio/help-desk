@@ -82,7 +82,7 @@ public class UserService
         return Result<UserModel?>.Success(userModel, "Usuario obtenido con éxito.");
     }
     
-    public async Task<Result<UserModel>> UpdateUserAsync(int id, UserModel userModel)
+    public async Task<Result<UserModel>> UpdateUserAsync(int id, UpdateUserDto updateUserDto)
     {
         var existingUser = await _userRepository.GetUserByIdAsync(id);
         if (existingUser == null)
@@ -92,8 +92,9 @@ public class UserService
                 "Fallo en la actualización del usuario."
             );
         }
-        userModel.Id = id;
-        var updatedUser = await _userRepository.UpdateAsync(userModel);
+        updateUserDto.Id = id;
+        var model = updateUserDto.ToModel();
+        var updatedUser = await _userRepository.UpdateAsync(model);
         if (updatedUser == null)
         {
             return Result<UserModel>.Failure(

@@ -1,25 +1,49 @@
-using Api.Endpoints;
 using Application.Validators;
 using FluentValidation;
-using Infrastructure.Ioc.Di;
+using Infrastructure.Ioc.Di; 
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- Registro de Dependencias ---
-builder.Services.AddDependencies(builder.Configuration);
+
+builder.Services.AddDependencies(builder.Configuration); 
 builder.Services.AddValidatorsFromAssemblyContaining<RegisterUserValidator>(ServiceLifetime.Scoped);
-// --- Fin Registro ---
 
-// --- Servicios API ---
+builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen( /* ... Opciones Swagger ... */);
-// --- Fin Servicios API ---
+builder.Services.AddSwaggerGen(options => {
+    options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title = "Help Desk API", Version = "v1" });
+    // TODO: Configurar Swagger para JWT
+});
 
-// --- Autenticación / Autorización ---
-// TODO: Configurar JWT aquí si es necesario para otros endpoints
-// builder.Services.AddAuthentication(...).AddJwtBearer(...);
-// builder.Services.AddAuthorization();
-// --- Fin Auth ---
+// TODO: Configurar JWT aquí
+
+//builder.Services.AddAuthentication(options =>
+//{
+//    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+//    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+//}).AddJwtBearer(options =>
+//{
+
+//    options.TokenValidationParameters = new TokenValidationParameters
+//    {
+//        ValidateIssuer = true,
+//        ValidateAudience = true,
+//        ValidateLifetime = true,
+//        ValidateIssuerSigningKey = true,
+//        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+//        ValidAudience = builder.Configuration["Jwt:Audience"],
+//        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+//    };
+//    options.Events = new JwtBearerEvents
+//    {
+//        OnAuthenticationFailed = context =>
+//        {
+//            if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
+//            {
+//                context.Response.Headers.Add("Token-Expired", "true");
+//            }
+    
+//            return Task.CompletedTask;
 
 var app = builder.Build();
 
@@ -30,15 +54,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 app.UseHttpsRedirection();
-// app.UseAuthentication(); // Descomentar si configuras JWT
-// app.UseAuthorization(); // Descomentar si configuras JWT
-// --- Fin Pipeline ---
+app.UseAuthentication();
+app.UseAuthorization(); 
 
 
-// --- Mapeo de Endpoints ---
-// Aquí es donde se usan los métodos de extensión de las clases estáticas CORRECTAMENTE
-app.MapAuthEndpoints();
-app.MapUserEndpoints();
-// --- Fin Mapeo ---
+
+
+app.MapControllers();
+
 
 app.Run();

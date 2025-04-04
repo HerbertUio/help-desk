@@ -4,10 +4,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Database.EntityFramework.Repositories.Common;
 
-public class GenericRepository <TEntity> : IGenericRepository<TEntity> where TEntity: class
+public class GenericRepository<TEntity> where TEntity : class
 {
-    private readonly HelpDeskDbContext _context;
-    private readonly DbSet<TEntity> _dbSet;
+    protected readonly HelpDeskDbContext _context;
+    protected readonly DbSet<TEntity> _dbSet;
 
     public GenericRepository(HelpDeskDbContext context)
     {
@@ -15,36 +15,41 @@ public class GenericRepository <TEntity> : IGenericRepository<TEntity> where TEn
         _dbSet = context.Set<TEntity>();
     }
 
-    public async Task<TEntity> CreateAsync(TEntity entity)
+    // Estos métodos ahora solo modifican el estado del DbContext
+    // La llamada a SaveChangesAsync se hará explícitamente donde se necesite.
+
+    public virtual async Task<TEntity> CreateAsyncBase(TEntity entity) // Renombrado para evitar colisión
     {
         var result = await _dbSet.AddAsync(entity);
-        await _context.SaveChangesAsync();
+        // NO SaveChangesAsync()
         return result.Entity;
     }
 
-    public async Task<List<TEntity>> GetAllAsync()
+    public virtual Task<TEntity> UpdateAsyncBase(TEntity entity) // Renombrado para evitar colisión
     {
-        return await _dbSet.ToListAsync();
+        _context.Entry(entity).State = EntityState.Modified;
+        // NO SaveChangesAsync()
+        return Task.FromResult(entity);
     }
-    
-    public async Task<TEntity?> GetByIdAsync(int id)
-    {
-        return await _dbSet.FindAsync(id);
-    }
-    public async Task<bool> DeleteAsync(int id)
-    {
-        var entity = await GetByIdAsync(id);
-        if (entity == null) return false;
 
+    public virtual async Task<bool> DeleteAsyncBase(int id) // Renombrado para evitar colisión
+    {
+        // Asume que TEntity tiene Id o implementa IIdentifiable
+        var entity = await _dbSet.FindAsync(id);
+        if (entity == null) return false;
         _dbSet.Remove(entity);
-        await _context.SaveChangesAsync();
+        // NO SaveChangesAsync()
         return true;
     }
 
-    public async Task<TEntity> UpdateAsync(TEntity entity)
+    // Métodos de lectura
+    public virtual async Task<TEntity?> GetByIdAsyncBase(int id)
     {
-        var entityEntry = _dbSet.Update(entity);
-        await _context.SaveChangesAsync();
-        return entityEntry.Entity;
+        return await _dbSet.FindAsync(id);
+    }
+
+    public virtual async Task<List<TEntity>> GetAllAsyncBase()
+    {
+        return await _dbSet.AsNoTracking().ToListAsync();
     }
 }

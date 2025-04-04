@@ -28,16 +28,7 @@ public class UserValidator: AbstractValidator<UserDto>
         RuleFor(e => e.Email)
             .NotEmpty().WithMessage("El email es requerido.")
             .Must(BeAValidEmail).WithMessage("El formato del email no es válido.");
-                
-        RuleFor(p => p.Password)
-            .NotEmpty().WithMessage("La contraseña es requerida.")
-            .MinimumLength(8).WithMessage("La contraseña debe tener al menos 8 caracteres.")
-            .MaximumLength(16).WithMessage("La contraseña no puede tener más de 16 caracteres.")
-            .Matches(@"[A-Z]+").WithMessage("La contraseña debe contener al menos una letra mayúscula.")
-            .Matches(@"[a-z]+").WithMessage("La contraseña debe contener al menos una letra minúscula.")
-            .Matches(@"[0-9]+").WithMessage("La contraseña debe contener al menos un número.")
-            .Matches(@"[\!\?\*\.]+")
-            .WithMessage("La contraseña debe contener al menos un carácter especial (!, ?, *, .).");
+        
     }
 
     private bool BeAValidEmail(string email)
